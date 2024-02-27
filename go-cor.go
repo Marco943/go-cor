@@ -20,14 +20,23 @@ func main() {
 	janela.Resize(fyne.Size{Width: 250, Height: 250})
 
 	corAtual := canvas.NewText("", color.White)
-	caixaCorAtual := canvas.NewRectangle(color.NRGBA{255, 255, 255, 255})
+	rectCorAtual := canvas.NewRectangle(color.NRGBA{255, 255, 255, 255})
+	caixaCorAtual := container.NewStack(rectCorAtual, corAtual)
 
-	content := container.NewAdaptiveGrid(1, widget.NewLabel("Cores Salvas"), corAtual, caixaCorAtual)
+	containerCoresSalvas := container.NewGridWithColumns(1,
+		widget.NewLabel("Cores Salvas"),
+		container.NewStack(
+			widget.NewButton("#ff0000", func() {}),
+			canvas.NewRectangle(color.NRGBA{R: 255, G: 0, B: 0, A: 255}),
+		),
+	)
+
+	content := container.NewGridWithColumns(2, containerCoresSalvas, caixaCorAtual)
 	janela.SetContent(content)
 
 	go func() {
 		for range time.Tick(time.Millisecond) {
-			atualizarCor(corAtual, caixaCorAtual)
+			atualizarCor(corAtual, rectCorAtual)
 		}
 	}()
 
@@ -48,15 +57,15 @@ func corContraste(cor *color.NRGBA) color.Color {
 	}
 }
 
-func atualizarCor(cor *canvas.Text, caixaCor *canvas.Rectangle) {
+func atualizarCor(cor *canvas.Text, rectCor *canvas.Rectangle) {
 	x, y := robotgo.Location()
 	corHex := robotgo.GetPixelColor(x, y)
 	corRGB := HexRGB(corHex)
 
-	cor.Text = corHex
+	cor.Text = fmt.Sprintf("#%v", corHex)
 	cor.Color = corContraste(&corRGB)
 	cor.Refresh()
-	caixaCor.FillColor = corRGB
+	rectCor.FillColor = corRGB
 }
 
 func encerrar() {
