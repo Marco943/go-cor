@@ -11,15 +11,20 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/go-vgo/robotgo"
 	"github.com/go-vgo/robotgo/clipboard"
 )
 
 var cores = []string{"ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274", "ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274"}
+var rscCopiar fyne.Resource = theme.ContentCopyIcon()
+var rscExcluir fyne.Resource = theme.NewErrorThemedResource(theme.DeleteIcon())
 
 func main() {
 	app := app.New()
+	app.SetIcon(theme.ColorPaletteIcon())
+
 	janela := app.NewWindow("Go-Cor")
 	janela.Resize(fyne.Size{Width: 250, Height: 250})
 
@@ -40,12 +45,13 @@ func main() {
 	}
 
 	containerCoresSalvas := container.NewScroll(listaCores)
+	containerCoresSalvas.SetMinSize(fyne.Size{Width: 200})
 
-	content := container.NewGridWithColumns(2, containerCoresSalvas, caixaCorAtual)
+	content := container.NewHBox(containerCoresSalvas, caixaCorAtual)
 	janela.SetContent(content)
 
 	go func() {
-		for range time.Tick(time.Millisecond) {
+		for range time.Tick(time.Duration(1) * time.Millisecond) {
 			atualizarCor(corAtual, rectCorAtual)
 		}
 	}()
@@ -68,10 +74,13 @@ func colorBox(corHex string, listaCores *fyne.Container) *fyne.Container {
 
 	rect := canvas.NewRectangle(corRGB)
 	rect.CornerRadius = 5
-	rect.SetMinSize(fyne.NewSize(20, 30))
+	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
 
-	botaoCopiar := widget.NewButton("Copiar", func() { clipboard.WriteAll(fmt.Sprintf("#%v", corHex)) })
-	botaoExcluir := widget.NewButton("Excluir", func() { listaCores.Remove(caixaCor) })
+	botaoCopiar := widget.NewButtonWithIcon("", rscCopiar, func() { clipboard.WriteAll(fmt.Sprintf("#%v", corHex)) })
+	botaoExcluir := widget.NewButtonWithIcon("", rscExcluir, func() { listaCores.Remove(caixaCor) })
+
+	botaoCopiar.Resize(fyne.Size{Height: 20})
+	botaoExcluir.Resize(fyne.Size{Height: 20})
 
 	caixaCor = container.NewHBox(container.NewStack(rect, container.NewCenter(texto)), botaoCopiar, botaoExcluir)
 
