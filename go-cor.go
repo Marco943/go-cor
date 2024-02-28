@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -12,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"github.com/go-vgo/robotgo"
+	"github.com/go-vgo/robotgo/clipboard"
 )
 
 var cores = []string{"ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274", "ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274"}
@@ -22,15 +24,19 @@ func main() {
 	janela.Resize(fyne.Size{Width: 250, Height: 250})
 
 	corAtual := canvas.NewText("", color.White)
+	corAtual.TextStyle = fyne.TextStyle{Monospace: true}
+	corAtual.TextSize = 14
+
 	rectCorAtual := canvas.NewRectangle(color.NRGBA{255, 255, 255, 255})
 	rectCorAtual.CornerRadius = 10
 	caixaCorAtual := container.NewStack(rectCorAtual, corAtual)
 
 	listaCores := container.NewVBox(widget.NewLabel("Cores Salvas"))
 
-	for i := range cores {
-		cor := colorBox(cores[i])
-		listaCores.Add(&cor)
+	for _, corHex := range cores {
+		caixaCor := colorBox(corHex, listaCores)
+
+		listaCores.Add(caixaCor)
 	}
 
 	containerCoresSalvas := container.NewScroll(listaCores)
@@ -48,14 +54,28 @@ func main() {
 	encerrar()
 }
 
-func colorBox(corHex string) fyne.Container {
+func colorBox(corHex string, listaCores *fyne.Container) *fyne.Container {
+	var caixaCor *fyne.Container
+
+	corHex = strings.ToUpper(corHex)
+
 	corRGB := HexRGB(&corHex)
 	corFonte := corContraste(&corRGB)
+
 	texto := canvas.NewText(fmt.Sprintf("#%v", corHex), corFonte)
+	texto.TextStyle = fyne.TextStyle{Monospace: true}
+	texto.TextSize = 12
+
 	rect := canvas.NewRectangle(corRGB)
 	rect.CornerRadius = 5
 	rect.SetMinSize(fyne.NewSize(20, 30))
-	return *container.NewStack(rect, container.NewCenter(texto))
+
+	botaoCopiar := widget.NewButton("Copiar", func() { clipboard.WriteAll(fmt.Sprintf("#%v", corHex)) })
+	botaoExcluir := widget.NewButton("Excluir", func() { listaCores.Remove(caixaCor) })
+
+	caixaCor = container.NewHBox(container.NewStack(rect, container.NewCenter(texto)), botaoCopiar, botaoExcluir)
+
+	return caixaCor
 }
 
 func HexRGB(hex *string) color.NRGBA {
@@ -73,7 +93,7 @@ func corContraste(cor *color.NRGBA) color.Color {
 
 func atualizarCor(cor *canvas.Text, rectCor *canvas.Rectangle) {
 	x, y := robotgo.Location()
-	corHex := robotgo.GetPixelColor(x, y)
+	corHex := strings.ToUpper(robotgo.GetPixelColor(x, y))
 	corRGB := HexRGB(&corHex)
 
 	cor.Text = fmt.Sprintf("#%v", corHex)
