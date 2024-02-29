@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,11 +18,31 @@ import (
 	"github.com/go-vgo/robotgo/clipboard"
 )
 
-var cores = []string{"ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274", "ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274"}
+type Perfil struct {
+	caminho string
+	cores   []string
+}
+
+func NovoPerfil() *Perfil {
+	caminho, _ := os.UserCacheDir()
+
+	return &Perfil{
+		caminho: caminho,
+	}
+}
+
+func (p *Perfil) LerCores() {
+
+}
+
+var cores = []string{"ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274"}
 var rscCopiar fyne.Resource = theme.ContentCopyIcon()
 var rscExcluir fyne.Resource = theme.NewErrorThemedResource(theme.DeleteIcon())
+var perfil Perfil
 
 func main() {
+	perfil = *NovoPerfil()
+
 	app := app.New()
 	app.SetIcon(theme.ColorPaletteIcon())
 
@@ -49,6 +70,15 @@ func main() {
 
 	content := container.NewHBox(containerCoresSalvas, caixaCorAtual)
 	janela.SetContent(content)
+
+	janela.Canvas().SetOnTypedKey(func(ke *fyne.KeyEvent) {
+		switch ke.Name {
+		case "H":
+			caixaCor := colorBox(corAtual.Text[1:], listaCores)
+			listaCores.Add(caixaCor)
+			clipboard.WriteAll(corAtual.Text)
+		}
+	})
 
 	go func() {
 		for range time.Tick(time.Duration(1) * time.Millisecond) {
