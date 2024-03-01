@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"image/color"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -18,30 +20,46 @@ import (
 	"github.com/go-vgo/robotgo/clipboard"
 )
 
-type Perfil struct {
-	caminho string
-	cores   []string
-}
+var cores []string
+var rscCopiar fyne.Resource = theme.ContentCopyIcon()
+var rscExcluir fyne.Resource = theme.NewErrorThemedResource(theme.DeleteIcon())
+var caminhoPerfil string
 
-func NovoPerfil() *Perfil {
-	caminho, _ := os.UserCacheDir()
-
-	return &Perfil{
-		caminho: caminho,
+func lerPerfil() {
+	dirCache, _ := os.UserCacheDir()
+	dirPerfil := filepath.Join(dirCache, "go-cor")
+	if _, err := os.Stat(dirPerfil); os.IsNotExist(err) {
+		os.MkdirAll(dirPerfil, 0700)
+	}
+	caminhoPerfil = filepath.Join(dirPerfil, "perfil")
+	if _, err := os.Stat(caminhoPerfil); os.IsNotExist(err) {
+		file, _ := os.Create(caminhoPerfil)
+		defer file.Close()
+		cores = []string{}
+	} else {
+		file, _ := os.Open(caminhoPerfil)
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			cores = append(cores, scanner.Text())
+		}
 	}
 }
 
-func (p *Perfil) LerCores() {
-
+func salvarPerfil() {
+	file, _ := os.OpenFile(caminhoPerfil, os.O_WRONLY, 0644)
+	writer := bufio.NewWriter(file)
+	defer file.Close()
+	defer writer.Flush()
+	for _, cor := range cores {
+		writer.WriteString(cor)
+		writer.WriteString("\n")
+	}
 }
 
-var cores = []string{"ffffff", "ff0000", "ff00ff", "00ff00", "bb7700", "77dd00", "928274"}
-var rscCopiar fyne.Resource = theme.ContentCopyIcon()
-var rscExcluir fyne.Resource = theme.NewErrorThemedResource(theme.DeleteIcon())
-var perfil Perfil
-
 func main() {
-	perfil = *NovoPerfil()
+	lerPerfil()
 
 	app := app.New()
 	app.SetIcon(theme.ColorPaletteIcon())
@@ -77,6 +95,7 @@ func main() {
 			caixaCor := colorBox(corAtual.Text[1:], listaCores)
 			listaCores.Add(caixaCor)
 			clipboard.WriteAll(corAtual.Text)
+			cores = append(cores, corAtual.Text[1:])
 		}
 	})
 
@@ -107,7 +126,15 @@ func colorBox(corHex string, listaCores *fyne.Container) *fyne.Container {
 	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
 
 	botaoCopiar := widget.NewButtonWithIcon("", rscCopiar, func() { clipboard.WriteAll(fmt.Sprintf("#%v", corHex)) })
-	botaoExcluir := widget.NewButtonWithIcon("", rscExcluir, func() { listaCores.Remove(caixaCor) })
+	botaoExcluir := widget.NewButtonWithIcon("", rscExcluir, func() {
+		listaCores.Remove(caixaCor)
+		for i, cor := range cores {
+			if cor == corHex {
+
+				cores = append(cores[:i], cores[i+1:]...)
+			}
+		}
+	})
 
 	botaoCopiar.Resize(fyne.Size{Height: 20})
 	botaoExcluir.Resize(fyne.Size{Height: 20})
@@ -142,5 +169,6 @@ func atualizarCor(cor *canvas.Text, rectCor *canvas.Rectangle) {
 }
 
 func encerrar() {
-	fmt.Println("Encerrando...")
+	salvarPerfil()
+	println("Encerrando...")
 }
