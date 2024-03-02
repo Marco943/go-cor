@@ -22,6 +22,40 @@ import (
 	"github.com/go-vgo/robotgo/clipboard"
 )
 
+type TappableBox struct {
+	widget.BaseWidget
+	cor      *Cor
+	OnTapped func()
+}
+
+func (b *TappableBox) CreateRenderer() fyne.WidgetRenderer {
+	texto := canvas.NewText(b.cor.Hex, b.cor.CorFonte)
+	texto.TextStyle = fyne.TextStyle{Monospace: true}
+	texto.TextSize = 12
+
+	rect := canvas.NewRectangle(b.cor.Rgb)
+	rect.CornerRadius = 5
+	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
+
+	c := container.NewStack(rect, container.NewCenter(texto))
+
+	return widget.NewSimpleRenderer(c)
+}
+
+func (b *TappableBox) Tapped(e *fyne.PointEvent) {
+	fmt.Printf("%v copiado", b.cor.Hex)
+	clipboard.WriteAll(b.cor.Hex)
+}
+
+func NewTappableBox(cor *Cor, tapped func()) *TappableBox {
+	box := &TappableBox{
+		cor:      cor,
+		OnTapped: tapped,
+	}
+	box.ExtendBaseWidget(box)
+	return box
+}
+
 type Cor struct {
 	Hex      string
 	Rgb      color.NRGBA
@@ -120,7 +154,7 @@ func main() {
 	listaCores := container.NewVBox(widget.NewLabel("Cores salvas"))
 
 	for _, corHex := range cores {
-		caixaCor := colorBox(corHex, listaCores)
+		caixaCor := NewTappableBox(&corHex, func() {})
 		listaCores.Add(caixaCor)
 	}
 
@@ -141,7 +175,7 @@ func main() {
 	janela.Canvas().SetOnTypedKey(func(ke *fyne.KeyEvent) {
 		switch ke.Name {
 		case "H":
-			caixaCor := colorBox(corAtual, listaCores)
+			caixaCor := NewTappableBox(&corAtual, func() {})
 			listaCores.Add(caixaCor)
 			clipboard.WriteAll(corAtual.Hex)
 			cores = append(cores, corAtual)
@@ -182,30 +216,30 @@ func main() {
 	encerrar()
 }
 
-func colorBox(cor Cor, listaCores *fyne.Container) *fyne.Container {
-	var caixaCor *fyne.Container
+// func colorBox(cor Cor, listaCores *fyne.Container) *fyne.Container {
+// 	var caixaCor *fyne.Container
 
-	texto := canvas.NewText(cor.Hex, cor.CorFonte)
-	texto.TextStyle = fyne.TextStyle{Monospace: true}
-	texto.TextSize = 12
+// 	texto := canvas.NewText(cor.Hex, cor.CorFonte)
+// 	texto.TextStyle = fyne.TextStyle{Monospace: true}
+// 	texto.TextSize = 12
 
-	rect := canvas.NewRectangle(cor.Rgb)
-	rect.CornerRadius = 5
-	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
+// 	rect := canvas.NewRectangle(cor.Rgb)
+// 	rect.CornerRadius = 5
+// 	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
 
-	botaoCopiar := widget.NewButtonWithIcon("", rscCopiar, func() { clipboard.WriteAll(cor.Hex) })
-	botaoExcluir := widget.NewButtonWithIcon("", rscExcluir, func() {
-		listaCores.Remove(caixaCor)
-		deletarCor(&cor)
-	})
+// 	botaoCopiar := widget.NewButtonWithIcon("", rscCopiar, func() { clipboard.WriteAll(cor.Hex) })
+// 	botaoExcluir := widget.NewButtonWithIcon("", rscExcluir, func() {
+// 		listaCores.Remove(caixaCor)
+// 		deletarCor(&cor)
+// 	})
 
-	botaoCopiar.Resize(fyne.Size{Height: 20})
-	botaoExcluir.Resize(fyne.Size{Height: 20})
+// 	botaoCopiar.Resize(fyne.Size{Height: 20})
+// 	botaoExcluir.Resize(fyne.Size{Height: 20})
 
-	caixaCor = container.NewHBox(container.NewStack(rect, container.NewCenter(texto)), botaoCopiar, botaoExcluir)
+// 	caixaCor = container.NewHBox(container.NewStack(rect, container.NewCenter(texto)), botaoCopiar, botaoExcluir)
 
-	return caixaCor
-}
+// 	return caixaCor
+// }
 
 func atualizarCor(textoCor *canvas.Text, rectCor *canvas.Rectangle) {
 	if !travaPosicao {
