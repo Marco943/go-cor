@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/go-vgo/robotgo"
@@ -161,6 +162,21 @@ func main() {
 			}
 		}
 	}()
+
+	if desk, ok := app.(desktop.App); ok {
+		m := fyne.NewMenu("Go-Cors",
+			fyne.NewMenuItem("Abrir", func() {
+				executando = true
+				janela.Show()
+			}),
+		)
+		desk.SetSystemTrayMenu(m)
+	}
+
+	janela.SetCloseIntercept(func() {
+		executando = false
+		janela.Hide()
+	})
 
 	janela.ShowAndRun()
 	encerrar()
