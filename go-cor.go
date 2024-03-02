@@ -155,14 +155,6 @@ func main() {
 
 	})
 
-	go func() {
-		for range time.Tick(time.Duration(1) * time.Millisecond) {
-			if executando {
-				atualizarCor(textoCorAtual, rectCorAtual)
-			}
-		}
-	}()
-
 	if desk, ok := app.(desktop.App); ok {
 		m := fyne.NewMenu("Go-Cors",
 			fyne.NewMenuItem("Abrir", func() {
@@ -177,6 +169,14 @@ func main() {
 		executando = false
 		janela.Hide()
 	})
+
+	go func() {
+		for range time.Tick(time.Duration(1) * time.Millisecond) {
+			if executando {
+				atualizarCor(textoCorAtual, rectCorAtual)
+			}
+		}
+	}()
 
 	janela.ShowAndRun()
 	encerrar()
