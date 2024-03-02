@@ -101,7 +101,8 @@ func main() {
 	app.SetIcon(theme.ColorPaletteIcon())
 
 	janela := app.NewWindow("Go-Cor")
-	janela.Resize(fyne.Size{Width: 250, Height: 250})
+	janela.Resize(fyne.Size{Width: 200, Height: 250})
+	janela.SetFixedSize(true)
 
 	corAtual = *NovaCor("#FFFFFF")
 
@@ -111,6 +112,8 @@ func main() {
 
 	rectCorAtual := canvas.NewRectangle(corAtual.Rgb)
 	rectCorAtual.CornerRadius = 10
+	rectCorAtual.SetMinSize(fyne.NewSize(100, 100))
+
 	caixaCorAtual := container.NewStack(rectCorAtual, textoCorAtual)
 
 	listaCores := container.NewVBox(widget.NewLabel("Cores salvas"))
@@ -129,7 +132,9 @@ func main() {
 	iconeTrava := widget.NewLabel("Travado")
 	iconeTrava.Hidden = !travaPosicao
 
-	content := container.NewHBox(containerCoresSalvas, container.NewVBox(iconePause, iconeTrava, caixaCorAtual))
+	containerDireita := container.NewVBox(iconePause, iconeTrava, caixaCorAtual)
+
+	content := container.NewHBox(containerCoresSalvas, containerDireita)
 	janela.SetContent(content)
 
 	janela.Canvas().SetOnTypedKey(func(ke *fyne.KeyEvent) {
