@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -15,26 +14,61 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/go-vgo/robotgo"
 	"github.com/go-vgo/robotgo/clipboard"
 )
 
+type TappableBox struct {
+	widget.BaseWidget
+	cor *Cor
+}
+
+func (b *TappableBox) CreateRenderer() fyne.WidgetRenderer {
+	texto := canvas.NewText(b.cor.Hex, b.cor.CorFonte)
+	texto.TextStyle = fyne.TextStyle{Monospace: true}
+	texto.TextSize = 12
+
+	rect := canvas.NewRectangle(b.cor.Rgb)
+	rect.CornerRadius = 5
+	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
+
+	iconeFixado := widget.NewCheckWithData("", binding.BindBool(&b.cor.fixo))
+
+	c := container.NewHBox(iconeFixado, container.NewStack(rect, texto))
+
+	return widget.NewSimpleRenderer(c)
+}
+
+func (b *TappableBox) Tapped(*fyne.PointEvent) {
+	clipboard.WriteAll(b.cor.Hex)
+}
+
+func NewTappableBox(cor *Cor) *TappableBox {
+	box := &TappableBox{
+		cor: cor,
+	}
+	box.ExtendBaseWidget(box)
+	return box
+}
+
 type Cor struct {
 	Hex      string
 	Rgb      color.NRGBA
 	CorFonte color.Color
+	fixo     bool
 }
 
-func NovaCor(hex string) *Cor {
+func NovaCor(hex string, fixo bool) *Cor {
 	hex = strings.ToUpper(hex)
 	rgb := HexRGB(&hex)
 	return &Cor{
 		Hex:      hex,
 		Rgb:      rgb,
 		CorFonte: corContraste(&rgb),
+		fixo:     fixo,
 	}
 }
 
@@ -51,13 +85,11 @@ func corContraste(cor *color.NRGBA) color.Color {
 	}
 }
 
-var cores []Cor
+var cores []*Cor
 var x, y int
 var corAtual Cor
 var executando bool = true
 var travaPosicao bool = false
-var rscCopiar fyne.Resource = theme.ContentCopyIcon()
-var rscExcluir fyne.Resource = theme.NewErrorThemedResource(theme.DeleteIcon())
 var caminhoPerfil string
 
 func lerPerfil() {
@@ -70,14 +102,14 @@ func lerPerfil() {
 	if _, err := os.Stat(caminhoPerfil); os.IsNotExist(err) {
 		file, _ := os.Create(caminhoPerfil)
 		defer file.Close()
-		cores = []Cor{}
+		cores = []*Cor{}
 	} else {
 		file, _ := os.Open(caminhoPerfil)
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
-			cores = append(cores, *NovaCor(scanner.Text()))
+			cores = append(cores, NovaCor(scanner.Text(), true))
 		}
 	}
 }
@@ -88,6 +120,9 @@ func salvarPerfil() {
 	defer file.Close()
 	defer writer.Flush()
 	for i, cor := range cores {
+		if !cor.fixo {
+			continue
+		}
 		writer.WriteString(cor.Hex)
 		if i != len(cores)-1 {
 			writer.WriteString("\n")
@@ -105,7 +140,7 @@ func main() {
 	janela.Resize(fyne.Size{Width: 200, Height: 250})
 	janela.SetFixedSize(true)
 
-	corAtual = *NovaCor("#FFFFFF")
+	corAtual = *NovaCor("#FFFFFF", false)
 
 	textoCorAtual := canvas.NewText(corAtual.Hex, corAtual.CorFonte)
 	textoCorAtual.TextStyle = fyne.TextStyle{Monospace: true}
@@ -120,7 +155,8 @@ func main() {
 	listaCores := container.NewVBox(widget.NewLabel("Cores salvas"))
 
 	for _, corHex := range cores {
-		caixaCor := colorBox(corHex, listaCores)
+		cor := corHex
+		caixaCor := NewTappableBox(cor)
 		listaCores.Add(caixaCor)
 	}
 
@@ -141,10 +177,11 @@ func main() {
 	janela.Canvas().SetOnTypedKey(func(ke *fyne.KeyEvent) {
 		switch ke.Name {
 		case "H":
-			caixaCor := colorBox(corAtual, listaCores)
+			cor := corAtual
+			caixaCor := NewTappableBox(&cor)
 			listaCores.Add(caixaCor)
 			clipboard.WriteAll(corAtual.Hex)
-			cores = append(cores, corAtual)
+			cores = append(cores, &cor)
 		case "P":
 			executando = !executando
 			iconePause.Hidden = executando
@@ -155,21 +192,22 @@ func main() {
 
 	})
 
-	if desk, ok := app.(desktop.App); ok {
-		m := fyne.NewMenu("Go-Cors",
-			fyne.NewMenuItem("Abrir", func() {
-				executando = true
-				janela.Show()
-			}),
-		)
-		desk.SetSystemTrayMenu(m)
-	}
+	// if desk, ok := app.(desktop.App); ok {
+	// 	m := fyne.NewMenu("Go-Cors",
+	// 		fyne.NewMenuItem("Abrir", func() {
+	// 			executando = true
+	// 			janela.Show()
+	// 		}),
+	// 	)
+	// 	desk.SetSystemTrayMenu(m)
+	// }
 
-	janela.SetCloseIntercept(func() {
-		executando = false
-		janela.Hide()
-	})
+	// janela.SetCloseIntercept(func() {
+	// 	executando = false
+	// 	janela.Hide()
+	// })
 
+	atualizarCor(textoCorAtual, rectCorAtual)
 	go func() {
 		for range time.Tick(time.Duration(1) * time.Millisecond) {
 			if executando {
@@ -182,50 +220,16 @@ func main() {
 	encerrar()
 }
 
-func colorBox(cor Cor, listaCores *fyne.Container) *fyne.Container {
-	var caixaCor *fyne.Container
-
-	texto := canvas.NewText(cor.Hex, cor.CorFonte)
-	texto.TextStyle = fyne.TextStyle{Monospace: true}
-	texto.TextSize = 12
-
-	rect := canvas.NewRectangle(cor.Rgb)
-	rect.CornerRadius = 5
-	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
-
-	botaoCopiar := widget.NewButtonWithIcon("", rscCopiar, func() { clipboard.WriteAll(cor.Hex) })
-	botaoExcluir := widget.NewButtonWithIcon("", rscExcluir, func() {
-		listaCores.Remove(caixaCor)
-		deletarCor(&cor)
-	})
-
-	botaoCopiar.Resize(fyne.Size{Height: 20})
-	botaoExcluir.Resize(fyne.Size{Height: 20})
-
-	caixaCor = container.NewHBox(container.NewStack(rect, container.NewCenter(texto)), botaoCopiar, botaoExcluir)
-
-	return caixaCor
-}
-
 func atualizarCor(textoCor *canvas.Text, rectCor *canvas.Rectangle) {
 	if !travaPosicao {
 		x, y = robotgo.Location()
 	}
-	corAtual = *NovaCor(fmt.Sprintf("#%v", robotgo.GetPixelColor(x, y)))
+	corAtual = *NovaCor(fmt.Sprintf("#%v", robotgo.GetPixelColor(x, y)), false)
 
 	textoCor.Text = corAtual.Hex
 	textoCor.Color = corAtual.CorFonte
 	rectCor.FillColor = corAtual.Rgb
 	textoCor.Refresh()
-}
-
-func deletarCor(corDeletada *Cor) {
-	for i, cor := range cores {
-		if cor == *corDeletada {
-			cores = slices.Delete(cores, i, i+1)
-			return
-		}
-	}
 }
 
 func encerrar() {
