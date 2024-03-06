@@ -95,9 +95,8 @@ var caminhoPerfil string
 func lerPerfil() {
 	dirCache, _ := os.UserCacheDir()
 	dirPerfil := filepath.Join(dirCache, "go-cor")
-	if _, err := os.Stat(dirPerfil); os.IsNotExist(err) {
-		os.MkdirAll(dirPerfil, 0700)
-	}
+	os.MkdirAll(dirPerfil, 0700)
+
 	caminhoPerfil = filepath.Join(dirPerfil, "perfil")
 	if _, err := os.Stat(caminhoPerfil); os.IsNotExist(err) {
 		file, _ := os.Create(caminhoPerfil)
@@ -130,6 +129,14 @@ func salvarPerfil() {
 	}
 }
 
+func setTopMost() {
+	janelas, err := robotgo.FindIds("Go-Cor")
+	if err != nil {
+		return
+	}
+	setTopMostWindows(janelas[0])
+}
+
 func main() {
 	lerPerfil()
 
@@ -148,7 +155,6 @@ func main() {
 
 	rectCorAtual := canvas.NewRectangle(corAtual.Rgb)
 	rectCorAtual.CornerRadius = 10
-	rectCorAtual.SetMinSize(fyne.NewSize(100, 100))
 
 	caixaCorAtual := container.NewStack(rectCorAtual, textoCorAtual)
 
@@ -161,7 +167,6 @@ func main() {
 	}
 
 	containerCoresSalvas := container.NewScroll(listaCores)
-	containerCoresSalvas.SetMinSize(fyne.Size{Width: 200})
 
 	iconePause := widget.NewIcon(theme.MediaPauseIcon())
 	iconePause.Hidden = executando
@@ -178,10 +183,10 @@ func main() {
 		switch ke.Name {
 		case "H":
 			cor := corAtual
+			cores = append(cores, &cor)
 			caixaCor := NewTappableBox(&cor)
 			listaCores.Add(caixaCor)
 			clipboard.WriteAll(corAtual.Hex)
-			cores = append(cores, &cor)
 		case "P":
 			executando = !executando
 			iconePause.Hidden = executando
@@ -216,7 +221,21 @@ func main() {
 		}
 	}()
 
-	janela.ShowAndRun()
+	var i int
+	go func() {
+		for range time.Tick(time.Duration(1) * time.Second) {
+			if i == 0 {
+				fmt.Println("Topmost")
+				setTopMost()
+			}
+			i++
+		}
+	}()
+
+	janela.Show()
+
+	app.Run()
+
 	encerrar()
 }
 
