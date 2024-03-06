@@ -33,11 +33,11 @@ func (b *TappableBox) CreateRenderer() fyne.WidgetRenderer {
 
 	rect := canvas.NewRectangle(b.cor.Rgb)
 	rect.CornerRadius = 5
-	rect.SetMinSize(fyne.Size{Height: 20, Width: 60})
+	rect.SetMinSize(fyne.Size{Height: 16, Width: 60})
 
 	iconeFixado := widget.NewCheckWithData("", binding.BindBool(&b.cor.fixo))
 
-	c := container.NewHBox(iconeFixado, container.NewStack(rect, texto))
+	c := container.NewHBox(iconeFixado, container.NewStack(rect, container.NewCenter(texto)))
 
 	return widget.NewSimpleRenderer(c)
 }
@@ -144,7 +144,7 @@ func main() {
 	app.SetIcon(theme.ColorPaletteIcon())
 
 	janela := app.NewWindow("Go-Cor")
-	janela.Resize(fyne.Size{Width: 200, Height: 250})
+	janela.Resize(fyne.Size{Width: 220, Height: 250})
 	janela.SetFixedSize(true)
 
 	corAtual = *NovaCor("#FFFFFF", false)
@@ -155,8 +155,9 @@ func main() {
 
 	rectCorAtual := canvas.NewRectangle(corAtual.Rgb)
 	rectCorAtual.CornerRadius = 10
+	rectCorAtual.SetMinSize(fyne.NewSize(60, 60))
 
-	caixaCorAtual := container.NewStack(rectCorAtual, textoCorAtual)
+	caixaCorAtual := container.NewStack(rectCorAtual, container.NewCenter(textoCorAtual))
 
 	listaCores := container.NewVBox(widget.NewLabel("Cores salvas"))
 
@@ -170,13 +171,21 @@ func main() {
 
 	iconePause := widget.NewIcon(theme.MediaPauseIcon())
 	iconePause.Hidden = executando
+	botaoPause := widget.NewButton("Pausar", func() {
+		executando = !executando
+		iconePause.Hidden = executando
+	})
 
-	iconeTrava := widget.NewLabel("Travado")
+	textPos := canvas.NewText(fmt.Sprintf("(%v, %v)", x, y), color.White)
+	textPos.TextSize = 11
+	textPos.TextStyle.Monospace = true
+
+	iconeTrava := widget.NewIcon(theme.MediaStopIcon())
 	iconeTrava.Hidden = !travaPosicao
 
-	containerDireita := container.NewVBox(iconePause, iconeTrava, caixaCorAtual)
+	containerDireita := container.NewVBox(caixaCorAtual, botaoPause, iconePause, container.NewHBox(textPos, iconeTrava))
 
-	content := container.NewHBox(containerCoresSalvas, containerDireita)
+	content := container.NewGridWithColumns(2, containerCoresSalvas, containerDireita)
 	janela.SetContent(content)
 
 	janela.Canvas().SetOnTypedKey(func(ke *fyne.KeyEvent) {
@@ -212,11 +221,10 @@ func main() {
 	// 	janela.Hide()
 	// })
 
-	atualizarCor(textoCorAtual, rectCorAtual)
 	go func() {
 		for range time.Tick(time.Duration(1) * time.Millisecond) {
 			if executando {
-				atualizarCor(textoCorAtual, rectCorAtual)
+				atualizarCor(textoCorAtual, rectCorAtual, textPos)
 			}
 		}
 	}()
@@ -225,7 +233,6 @@ func main() {
 	go func() {
 		for range time.Tick(time.Duration(1) * time.Second) {
 			if i == 0 {
-				fmt.Println("Topmost")
 				setTopMost()
 			}
 			i++
@@ -239,9 +246,11 @@ func main() {
 	encerrar()
 }
 
-func atualizarCor(textoCor *canvas.Text, rectCor *canvas.Rectangle) {
+func atualizarCor(textoCor *canvas.Text, rectCor *canvas.Rectangle, textPos *canvas.Text) {
 	if !travaPosicao {
 		x, y = robotgo.Location()
+		textPos.Text = fmt.Sprintf("(%v, %v)", x, y)
+		textPos.Refresh()
 	}
 	corAtual = *NovaCor(fmt.Sprintf("#%v", robotgo.GetPixelColor(x, y)), false)
 
@@ -253,5 +262,4 @@ func atualizarCor(textoCor *canvas.Text, rectCor *canvas.Rectangle) {
 
 func encerrar() {
 	salvarPerfil()
-	println("Encerrando...")
 }
